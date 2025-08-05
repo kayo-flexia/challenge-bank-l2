@@ -19,7 +19,7 @@ public class ClienteController {
     }
 
     @PostMapping("/registrar")
-    public ResponseEntity<ClienteResponseDTO> registrarCliente(@RequestBody @Valid ClienteRequestDTO clienteRequestDTO) {
+    public ResponseEntity<ClienteResponseDTO> registrarCliente(@RequestBody @Valid ClienteRequestDTO clienteRequestDTO) { // el @Valid es para validar las anotaciones del requestDTO (@NotBlank en este caso)
         ClienteResponseDTO clienteResponse = clienteService.registrarCliente(clienteRequestDTO);
         return new ResponseEntity<>(clienteResponse, HttpStatus.CREATED);
     }

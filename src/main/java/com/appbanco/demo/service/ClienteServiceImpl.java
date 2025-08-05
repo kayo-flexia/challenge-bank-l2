@@ -10,33 +10,36 @@ import com.appbanco.demo.entity.Direccion;
 import com.appbanco.demo.repository.ClienteRepository;
 import com.appbanco.demo.repository.CuentaRepository;
 import com.appbanco.demo.utils.GeneradorDatosBancarios;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collections;
-import java.util.Random;
+import java.util.NoSuchElementException;
 
-@Service //marca esta clase como un componente de servicio de Spring, haciéndola elegible para la inyección de dependencias.
+@Service // marca esta clase como un componente de servicio de Spring, haciéndola elegible para la inyección de dependencias.
 public class ClienteServiceImpl implements ClienteService {
 
     private final ClienteRepository clienteRepository;
-    private final CuentaRepository cuentaRepository;
     private final GeneradorDatosBancarios generadorDatosBancarios;
     private final PasswordEncoder passwordEncoder;
 
     public ClienteServiceImpl(ClienteRepository clienteRepository, CuentaRepository cuentaRepository, GeneradorDatosBancarios generadorDatosBancarios, PasswordEncoder passwordEncoder) { // inyección por constructor
         this.clienteRepository = clienteRepository;
-        this.cuentaRepository = cuentaRepository;
         this.generadorDatosBancarios = generadorDatosBancarios;
         this.passwordEncoder = passwordEncoder;
     }
 
-    @Override
-    @Transactional
+    @Override // sobreescribir
+    @Transactional // asegurarse de que todas las operaciones (o ninguna) se completen. No queda nada a medias
+    // @CacheEvict limpia la caché 'clientes' para el usuario si se registra uno nuevo o se actualiza
+    @CacheEvict(value = "clientes", key = "#dto.getUsuario()")
     public ClienteResponseDTO registrarCliente(ClienteRequestDTO dto) {
 
         Direccion direccion = new Direccion();
+        direccion.setCalle(dto.getDireccion().getCalle());
         direccion.setCalle(dto.getDireccion().getCalle());
         direccion.setAltura(dto.getDireccion().getAltura());
         direccion.setCiudad(dto.getDireccion().getCiudad());
@@ -78,8 +81,6 @@ public class ClienteServiceImpl implements ClienteService {
 
         // Persistir Cliente (y Cuenta por cascade). Se guarda el cliente en la base de datos. JPA traduce tu objeto Cliente a una sentencia SQL INSERT
         clienteRepository.save(cliente);
-        //recordemos que tenemos @OneToMany(mappedBy = "cliente", cascade = CascadeType.ALL) private List<Cuenta> cuentas; en la entidad clientes.
-        //gracias a cascade = CascadeType.ALL, no necesitas llamar a cuentaRepository.save(cuenta);
 
         // Mapear ClienteResponseDTO
         ClienteResponseDTO responseDTO = new ClienteResponseDTO();
@@ -113,5 +114,14 @@ public class ClienteServiceImpl implements ClienteService {
         responseDTO.setCuentas(Collections.singletonList(cuentaResponseDTO));
 
         return responseDTO;
+    }
+
+    @Override
+    // @Cacheable almacena el resultado del método en la caché 'clientes'
+    // La clave para el cacheado es el 'username'.
+    @Cacheable(value = "clientes", key = "#username")
+    public Cliente findByUsuario(String username) {
+        return clienteRepository.findByUsuario(username)
+                .orElseThrow(() -> new NoSuchElementException("Cliente no encontrado: " + username));
     }
 }

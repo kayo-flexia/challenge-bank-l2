@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.List;
+
 @Entity
 @Getter @Setter
 public class Cuenta {
@@ -22,4 +24,7 @@ public class Cuenta {
     @ManyToOne
     @JoinColumn(name = "client_id")
     private Cliente cliente;
+
+    @OneToMany(mappedBy = "cuenta", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<Movimiento> movimientos;
 }
